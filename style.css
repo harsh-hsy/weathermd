@@ -1,0 +1,602 @@
+/* =========================================================
+   Weather.md — CALM theme (light) + DARK theme
+   Soft, restful look. Dark mode uses the same layout,
+   only the colour tokens change (body.dark-mode).
+   ========================================================= */
+
+/* ---------- Design tokens (light) ---------- */
+:root {
+    --bg-1: #eef4f1;
+    --bg-2: #e9f0f5;
+    --halo-1: #f6fbf8;
+    --halo-2: #e8f0f7;
+    --surface: rgba(255, 255, 255, 0.74);
+    --surface-2: rgba(255, 255, 255, 0.55);
+    --search-bg: rgba(255, 255, 255, 0.85);
+    --hover-bg: rgba(255, 255, 255, 0.8);
+    --border: rgba(58, 90, 76, 0.10);
+    --border-strong: rgba(58, 90, 76, 0.22);
+    --focus-ring: rgba(111, 159, 134, 0.15);
+    --text: #33443d;
+    --muted: #8a9c93;
+    --accent: #6f9f86;
+    --accent-strong: #5d8a72;
+    --danger: #c0736f;
+    --radius: 22px;
+    --radius-sm: 16px;
+    --gap: 22px;
+    --shadow: 0 12px 34px rgba(45, 64, 56, 0.08);
+    --font: "Segoe UI", system-ui, -apple-system, Arial, sans-serif;
+}
+
+/* ---------- Design tokens (dark) ---------- */
+body.dark-mode {
+    --bg-1: #101c18;
+    --bg-2: #0a1512;
+    --halo-1: rgba(111, 159, 134, 0.16);
+    --halo-2: rgba(84, 130, 160, 0.12);
+    --surface: rgba(26, 48, 39, 0.72);
+    --surface-2: rgba(32, 58, 47, 0.55);
+    --search-bg: rgba(0, 0, 0, 0.22);
+    --hover-bg: rgba(255, 255, 255, 0.07);
+    --border: rgba(134, 192, 163, 0.14);
+    --border-strong: rgba(134, 192, 163, 0.32);
+    --focus-ring: rgba(134, 192, 163, 0.22);
+    --text: #e5f1ea;
+    --muted: #90ab9d;
+    --accent: #5f8f77;
+    --accent-strong: #8ecdb0;
+    --danger: #e08a86;
+    --shadow: 0 14px 34px rgba(0, 0, 0, 0.4);
+}
+
+/* ---------- Base ---------- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: var(--font);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 28px;
+    background-color: var(--bg-1);
+    /* soft, calm wash of colour */
+    background-image:
+        radial-gradient(1200px 700px at 8% -12%, var(--halo-1), transparent 60%),
+        radial-gradient(1000px 700px at 105% -5%, var(--halo-2), transparent 55%),
+        linear-gradient(180deg, var(--bg-1) 0%, var(--bg-2) 100%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.container {
+    max-width: 1080px;
+    margin: 0 auto;
+}
+
+/* ---------- SVG icons ---------- */
+.icon-sprite {
+    position: absolute;
+    width: 0;
+    height: 0;
+    overflow: hidden;
+}
+
+.icon {
+    width: 1em;
+    height: 1em;
+    display: inline-block;
+    vertical-align: -0.15em;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.6;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+/* ---------- Header ---------- */
+header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-bottom: var(--gap);
+    padding: 16px 20px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+header h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    color: var(--text);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px; /* small gap between Current Location and the theme button */
+}
+
+/* ---------- Layout ---------- */
+.dashboard {
+    display: flex;
+    flex-direction: column;
+    gap: var(--gap);
+}
+
+.dashboard-row {
+    display: grid;
+    gap: var(--gap);
+}
+
+.row-top {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.row-bottom {
+    grid-template-columns: 1fr;
+}
+
+/* ---------- Cards ---------- */
+.card {
+    position: relative;
+    min-width: 0; /* lets the card shrink instead of forcing its grid column wider */
+    text-align: center;
+    padding: 26px 22px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    transition: background-color 0.3s, border-color 0.3s, box-shadow 0.3s;
+}
+
+.card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 18px;
+}
+
+/* ---------- Search ---------- */
+.search-section {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    max-width: 420px;
+    background: var(--search-bg);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    padding: 6px 6px 6px 16px;
+    transition: border-color 0.25s, box-shadow 0.25s, background-color 0.3s;
+}
+
+.search-section:focus-within {
+    border-color: var(--border-strong);
+    box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+#cityInput {
+    flex: 1;
+    min-width: 0;
+    padding: 9px 4px;
+    font-size: 15px;
+    color: var(--text);
+    background: transparent;
+    border: none;
+    outline: none;
+}
+
+#cityInput::placeholder {
+    color: var(--muted);
+}
+
+/* ---------- Buttons (search + current location) ---------- */
+#searchBtn,
+.location-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    color: #ffffff;
+    background-color: var(--accent);
+    border: none;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.25s;
+}
+
+#searchBtn:hover,
+.location-btn:hover {
+    background-color: var(--accent-strong);
+}
+
+.location-icon {
+    display: inline-flex;
+    font-size: 15px;
+    line-height: 1;
+}
+
+/* ---------- Theme toggle button ---------- */
+.theme-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 42px;
+    height: 42px;
+    font-size: 18px;
+    color: var(--text);
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    cursor: pointer;
+    transition: background-color 0.25s, border-color 0.25s, color 0.25s;
+}
+
+.theme-btn:hover {
+    background: var(--hover-bg);
+    border-color: var(--border-strong);
+}
+
+/* ---------- Loading & Error ---------- */
+#loading {
+    text-align: center;
+    font-size: 13px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 18px 0;
+}
+
+#error {
+    text-align: center;
+    font-size: 14px;
+    color: var(--danger);
+    margin: 18px 0;
+    padding: 14px 16px;
+    background: rgba(192, 115, 111, 0.08);
+    border: 1px solid rgba(192, 115, 111, 0.25);
+    border-radius: var(--radius-sm);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* ---------- Live Time card (the calm hero) ---------- */
+.clock-time {
+    font-variant-numeric: tabular-nums;
+    font-size: 46px;
+    font-weight: 300;
+    letter-spacing: 2px;
+    color: var(--text);
+}
+
+.clock-date {
+    font-size: 15px;
+    letter-spacing: 0.3px;
+    color: var(--muted);
+    margin-top: 10px;
+}
+
+.time-icon {
+    font-size: 46px;
+    margin-top: 16px;
+    color: var(--accent);
+}
+
+.time-label {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 6px;
+}
+
+/* ---------- Today's Weather card ---------- */
+.location {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 17px;
+    font-weight: 600;
+    letter-spacing: 0.2px;
+    color: var(--text);
+    text-align: left;
+    margin-bottom: 14px;
+}
+
+.location .icon {
+    color: var(--accent);
+}
+
+.weather-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.weather-icon {
+    font-size: 42px;
+    color: var(--accent-strong);
+}
+
+.temperature {
+    font-variant-numeric: tabular-nums;
+    font-size: 42px;
+    font-weight: 300;
+    color: var(--text);
+}
+
+.condition {
+    font-size: 15px;
+    color: var(--muted);
+    text-transform: capitalize;
+}
+
+.weather-details {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px;
+    margin-top: 22px;
+    padding-top: 18px;
+    border-top: 1px solid var(--border);
+}
+
+.detail {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.detail-label {
+    font-size: 10px;
+    letter-spacing: 0.6px;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.detail-value {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+/* ---------- AQI + UV card ---------- */
+.aqi-block {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+}
+
+.aqi-label {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.aqi-value,
+.uv-value {
+    font-variant-numeric: tabular-nums;
+    font-size: 32px;
+    font-weight: 300;
+    color: var(--accent-strong);
+}
+
+.aqi-text {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--muted);
+}
+
+/* UV: two columns — value on top, label below */
+.uv-block {
+    display: flex;
+    justify-content: space-around;
+    gap: 16px;
+}
+
+.uv-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+}
+
+.uv-group .uv-value {
+    font-size: 34px;
+}
+
+.uv-group .uv-text {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+}
+
+.aqi-divider {
+    height: 1px;
+    background: var(--border);
+    margin: 18px 0;
+}
+
+/* ---------- 6-Day Forecast card ---------- */
+.forecast-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+}
+
+.forecast-card {
+    flex: 1 1 120px;
+    max-width: 180px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    text-align: center;
+    transition: background-color 0.25s, border-color 0.25s;
+}
+
+.forecast-card:hover {
+    background: var(--hover-bg);
+    border-color: var(--border-strong);
+}
+
+.forecast-day {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 8px;
+}
+
+.forecast-icon {
+    font-size: 26px;
+    margin: 6px 0;
+    color: var(--accent-strong);
+}
+
+.forecast-temps {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+}
+
+.placeholder-text {
+    color: var(--muted);
+    font-size: 14px;
+    padding: 8px 0;
+}
+
+/* ---------- Other Cities card ---------- */
+.cities-container {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 14px;
+}
+
+.city-card {
+    flex: 1 1 120px;
+    max-width: 180px;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 16px;
+    text-align: center;
+    transition: background-color 0.25s, border-color 0.25s;
+}
+
+.city-card:hover {
+    background: var(--hover-bg);
+    border-color: var(--border-strong);
+}
+
+.city-name {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+}
+
+.city-temp {
+    font-variant-numeric: tabular-nums;
+    font-size: 24px;
+    font-weight: 300;
+    color: var(--accent-strong);
+}
+
+.city-icon {
+    font-size: 24px;
+    margin-top: 6px;
+    color: var(--accent-strong);
+}
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+    .row-top {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .aqi-card {
+        grid-column: span 2;
+    }
+
+    .row-bottom {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 16px;
+    }
+
+    header {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    header h1 {
+        font-size: 20px;
+    }
+
+    .search-section {
+        flex: none;
+        max-width: 100%;
+    }
+
+    .header-actions {
+        width: 100%;
+    }
+
+    .location-btn {
+        flex: 1;
+        justify-content: center;
+    }
+
+    .row-top {
+        grid-template-columns: 1fr;
+    }
+
+    .aqi-card {
+        grid-column: auto;
+    }
+
+    .clock-time {
+        font-size: 38px;
+    }
+
+    .temperature {
+        font-size: 38px;
+    }
+}
