@@ -1,14 +1,5 @@
-// Cities shown in the "Other Cities" card.
-// Coordinates are hardcoded because Open-Meteo returns no city name, and
-// searching "Bangalore" resolves to an unrelated town in Pakistan.
-const OTHER_CITIES = [
-  { name: "Jaipur", lat: 26.9196, lon: 75.7878 },
-  { name: "Delhi", lat: 28.652, lon: 77.2315 },
-  { name: "Noida", lat: 28.58, lon: 77.33 },
-  { name: "Agra", lat: 27.1833, lon: 78.0167 },
-  { name: "Lucknow", lat: 26.8393, lon: 80.9231 },
-  { name: "Bangalore", lat: 12.9719, lon: 77.5937 },
-];
+// Cities shown in the "Other Cities" card
+const OTHER_CITIES = ["Jaipur", "Delhi", "Noida", "Agra", "Lucknow", "Bangalore"];
 
 // Get DOM elements
 const cityInput = document.getElementById("cityInput");
@@ -103,73 +94,34 @@ async function fetchWeather() {
   hideError();
 
   try {
-    // Turn the typed name into coordinates
-    const place = await geocodeCity(city);
-
-    // Check if city was found
-    if (!place) {
-      throw new Error("City not found. Please enter a valid city.");
-    }
-
-    // Display the weather data
-    await showWeatherFor(place.lat, place.lon, `${place.name}, ${place.countryCode}`);
-  } catch (error) {
-    showError(friendlyError(error));
-  } finally {
-    hideLoading();
-  }
-}
-
-// --------------------------------------------------
-// PLACE LOOKUP
-// --------------------------------------------------
-// Turn a typed city name into coordinates using the keyless Open-Meteo geocoder
-async function geocodeCity(city) {
-  const response = await fetch(
-    `https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(city)}&count=1&language=en&format=json`,
-  );
-
-  if (!response.ok) {
-    throw new Error("Unable to search for that city right now.");
-  }
-
-  const data = await response.json();
-  const place = data.results && data.results[0];
-
-  if (!place) {
-    return null;
-  }
-
-  return {
-    name: place.name,
-    countryCode: place.country_code,
-    lat: place.latitude,
-    lon: place.longitude,
-  };
-}
-
-// Turn coordinates into a "City, CC" label, falling back to a generic name
-async function reverseGeocode(lat, lon) {
-  try {
-    const response = await fetch(
-      `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=en`,
+    // Fetch current weather data
+    const weatherResponse = await fetch(
+      `/api/weather?q=${encodeURIComponent(city)}`,
     );
 
-    if (!response.ok) {
-      throw new Error("Reverse geocoding failed.");
+    // Check if city was found
+    if (!weatherResponse.ok) {
+      if (weatherResponse.status === 404) {
+        throw new Error("City not found. Please enter a valid city.");
+      }
+      throw new Error(await errorMessage(weatherResponse, "Unable to fetch weather data."));
     }
 
-    const data = await response.json();
-    const name = data.city || data.locality;
+    const weatherData = await weatherResponse.json();
 
-    if (!name) {
-      throw new Error("No city name for these coordinates.");
-    }
+    // Display the weather data
+    displayWeather(weatherData);
 
-    return data.countryCode ? `${name}, ${data.countryCode}` : name;
+    // The forecast, air quality and UV index all use the coordinates
+    const lat = weatherData.coord.lat;
+    const lon = weatherData.coord.lon;
+    fetchForecast(lat, lon);
+    fetchAirQuality(lat, lon);
+    fetchUvIndex(lat, lon);
   } catch (error) {
-    // The weather still works without a name, so keep going
-    return "Your Location";
+    showError(error.message);
+  } finally {
+    hideLoading();
   }
 }
 
@@ -191,7 +143,7 @@ function getLocationWeather() {
   navigator.geolocation.getCurrentPosition(
     // Success: we received the latitude and longitude
     function (position) {
-      showLocationWeather(position.coords.latitude, position.coords.longitude);
+      fetchWeatherByCoords(position.coords.latitude, position.coords.longitude);
     },
     // Error: the location request failed
     function (error) {
@@ -202,13 +154,38 @@ function getLocationWeather() {
   );
 }
 
-// Name the coordinates and show their weather
-async function showLocationWeather(lat, lon) {
+// Fetch and show the weather for a latitude and longitude
+async function fetchWeatherByCoords(lat, lon) {
+  // Show loading and hide any old error
+  showLoading();
+  hideError();
+
   try {
-    const label = await reverseGeocode(lat, lon);
-    await showWeatherFor(lat, lon, label);
+    // Fetch current weather data
+    const weatherResponse = await fetch(
+      `/api/weather?lat=${lat}&lon=${lon}`,
+    );
+
+    if (!weatherResponse.ok) {
+      throw new Error(await errorMessage(weatherResponse, "Unable to fetch weather data. Please try again."));
+    }
+
+    const weatherData = await weatherResponse.json();
+
+    // Display the weather data
+    displayWeather(weatherData);
+
+    // The forecast, air quality and UV index use these coordinates
+    fetchForecast(lat, lon);
+    fetchAirQuality(lat, lon);
+    fetchUvIndex(lat, lon);
   } catch (error) {
-    showError(friendlyError(error));
+    // fetch() throws a TypeError when there is no internet connection
+    if (error instanceof TypeError) {
+      showError("Network error. Please check your internet connection.");
+    } else {
+      showError(error.message);
+    }
   } finally {
     hideLoading();
   }
@@ -229,56 +206,26 @@ function showLocationError(error) {
 }
 
 // --------------------------------------------------
-// CURRENT WEATHER
+// DISPLAY CURRENT WEATHER
 // --------------------------------------------------
-// Fetch the current conditions and today's high/low for a pair of coordinates
-async function fetchCurrentWeather(lat, lon) {
-  const response = await fetch(
-    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-      `&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,weather_code,wind_speed_10m` +
-      `&daily=temperature_2m_max,temperature_2m_min&forecast_days=1&timezone=auto`,
-  );
-
-  if (!response.ok) {
-    throw new Error("Unable to fetch weather data. Please try again.");
-  }
-
-  return response.json();
-}
-
-// Load everything the dashboard shows for one place
-async function showWeatherFor(lat, lon, label) {
-  const data = await fetchCurrentWeather(lat, lon);
-
-  displayWeather(data, label);
-
-  // The forecast, air quality and UV index use the same coordinates
-  fetchForecast(lat, lon);
-  fetchAirQuality(lat, lon);
-  fetchUvIndex(lat, lon);
-}
-
-function displayWeather(data, label) {
-  const current = data.current;
-
+function displayWeather(data) {
   // City and country
-  cityName.textContent = label;
+  cityName.textContent = `${data.name}, ${data.sys.country}`;
 
   // Weather icon
-  weatherIcon.innerHTML = iconSvg(
-    getWeatherCodeIconId(current.weather_code, current.is_day),
-  );
+  const iconCode = data.weather[0].icon;
+  weatherIcon.innerHTML = iconSvg(getWeatherIconId(iconCode));
 
   // Temperature and condition
-  temperature.textContent = `${Math.round(current.temperature_2m)}°C`;
-  condition.textContent = getWeatherDescription(current.weather_code);
+  temperature.textContent = `${Math.round(data.main.temp)}°C`;
+  condition.textContent = data.weather[0].description;
 
   // Details
-  feelsLike.textContent = `${Math.round(current.apparent_temperature)}°C`;
-  highTemp.textContent = `${Math.round(data.daily.temperature_2m_max[0])}°C`;
-  lowTemp.textContent = `${Math.round(data.daily.temperature_2m_min[0])}°C`;
-  humidity.textContent = `${current.relative_humidity_2m}%`;
-  windSpeed.textContent = `${Math.round(current.wind_speed_10m)} km/h`; // Open-Meteo already gives km/h
+  feelsLike.textContent = `${Math.round(data.main.feels_like)}°C`;
+  highTemp.textContent = `${Math.round(data.main.temp_max)}°C`;
+  lowTemp.textContent = `${Math.round(data.main.temp_min)}°C`;
+  humidity.textContent = `${data.main.humidity}%`;
+  windSpeed.textContent = `${Math.round(data.wind.speed * 3.6)} km/h`; // Convert m/s to km/h
 }
 
 // --------------------------------------------------
@@ -358,14 +305,18 @@ async function loadOtherCities() {
 
   for (const city of OTHER_CITIES) {
     try {
-      const data = await fetchCurrentWeather(city.lat, city.lon);
-      const icon = iconSvg(
-        getWeatherCodeIconId(data.current.weather_code, data.current.is_day),
+      const response = await fetch(
+        `/api/weather?q=${encodeURIComponent(city)}`,
       );
 
-      addCityCard(city.name, `${Math.round(data.current.temperature_2m)}°C`, icon);
+      if (!response.ok) {
+        throw new Error("Unavailable");
+      }
+
+      const data = await response.json();
+      addCityCard(data.name, `${Math.round(data.main.temp)}°C`, iconSvg(getWeatherIconId(data.weather[0].icon)));
     } catch (error) {
-      addCityCard(city.name, "--", iconSvg("ic-cloud"));
+      addCityCard(city, "--", iconSvg("ic-cloud"));
     }
   }
 }
@@ -442,15 +393,12 @@ function displayForecast(daily) {
   });
 }
 
-// Convert an Open-Meteo weather code (WMO) into a sprite icon id.
-// is_day is 1 in daylight and 0 at night; when it is missing we assume day.
-function getWeatherCodeIconId(code, isDay) {
-  const night = isDay === 0;
-
+// Convert an Open-Meteo weather code (WMO) into a sprite icon id
+function getWeatherCodeIconId(code) {
   if (code === 0) {
-    return night ? "ic-moon" : "ic-sun"; // Clear sky
+    return "ic-sun"; // Clear sky
   } else if (code === 1 || code === 2) {
-    return night ? "ic-cloud-moon" : "ic-cloud-sun"; // Mainly clear / partly cloudy
+    return "ic-cloud-sun"; // Mainly clear / partly cloudy
   } else if (code === 3) {
     return "ic-cloud"; // Overcast
   } else if (code === 45 || code === 48) {
@@ -468,52 +416,38 @@ function getWeatherCodeIconId(code, isDay) {
   } else if (code >= 95) {
     return "ic-thunder"; // Thunderstorm
   } else {
-    return night ? "ic-moon" : "ic-sun";
-  }
-}
-
-// Turn an Open-Meteo weather code (WMO) into readable text
-function getWeatherDescription(code) {
-  if (code === 0) {
-    return "Clear sky";
-  } else if (code === 1) {
-    return "Mainly clear";
-  } else if (code === 2) {
-    return "Partly cloudy";
-  } else if (code === 3) {
-    return "Overcast";
-  } else if (code === 45) {
-    return "Fog";
-  } else if (code === 48) {
-    return "Depositing rime fog";
-  } else if (code >= 51 && code <= 55) {
-    return "Drizzle";
-  } else if (code === 56 || code === 57) {
-    return "Freezing drizzle";
-  } else if (code >= 61 && code <= 65) {
-    return "Rain";
-  } else if (code === 66 || code === 67) {
-    return "Freezing rain";
-  } else if (code >= 71 && code <= 75) {
-    return "Snow";
-  } else if (code === 77) {
-    return "Snow grains";
-  } else if (code >= 80 && code <= 82) {
-    return "Rain showers";
-  } else if (code === 85 || code === 86) {
-    return "Snow showers";
-  } else if (code === 95) {
-    return "Thunderstorm";
-  } else if (code === 96 || code === 99) {
-    return "Thunderstorm with hail";
-  } else {
-    return "Unknown";
+    return "ic-sun";
   }
 }
 
 // Build an inline SVG icon that points at the sprite in index.html
 function iconSvg(id) {
   return `<svg class="icon" aria-hidden="true"><use href="#${id}"></use></svg>`;
+}
+
+// Convert an OpenWeatherMap icon code into a sprite icon id
+function getWeatherIconId(iconCode) {
+  const iconMap = {
+    "01d": "ic-sun", // Clear sky day
+    "01n": "ic-moon", // Clear sky night
+    "02d": "ic-cloud-sun", // Few clouds day
+    "02n": "ic-cloud-moon", // Few clouds night
+    "03d": "ic-cloud", // Scattered clouds
+    "03n": "ic-cloud",
+    "04d": "ic-cloud", // Broken clouds
+    "04n": "ic-cloud",
+    "09d": "ic-rain", // Shower rain
+    "09n": "ic-rain",
+    "10d": "ic-rain", // Rain
+    "10n": "ic-rain",
+    "11d": "ic-thunder", // Thunderstorm
+    "11n": "ic-thunder",
+    "13d": "ic-snow", // Snow
+    "13n": "ic-snow",
+    "50d": "ic-fog", // Mist
+    "50n": "ic-fog",
+  };
+  return iconMap[iconCode] || "ic-sun";
 }
 
 // Show loading message
@@ -537,13 +471,17 @@ function hideError() {
   errorDiv.classList.add("hidden");
 }
 
-// Turn a thrown error into a message worth showing
-function friendlyError(error) {
-  // fetch() throws a TypeError when there is no internet connection
-  if (error instanceof TypeError) {
-    return "Network error. Please check your internet connection.";
+// Read the message from a failed response (for example a missing API key)
+async function errorMessage(response, fallback) {
+  try {
+    const body = await response.json();
+    if (body && body.error) {
+      return body.error;
+    }
+  } catch (error) {
+    // ignore and use the fallback
   }
-  return error.message;
+  return fallback;
 }
 
 // --------------------------------------------------

@@ -1,0 +1,8 @@
+# Cloudflare / Wrangler local files
+.wrangler/
+node_modules/
+
+# Local secrets (never commit these)
+.dev.vars
+*.local
+secrets.*
